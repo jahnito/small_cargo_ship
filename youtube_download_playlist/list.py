@@ -2,9 +2,12 @@
 from pytube import Playlist
 from pytube import YouTube
 import time, random
+import sys
 
-l = input("Input Youtube Playlist: ")
-p = Playlist(l)
+if len(sys.argv) > 1 and 'https' in sys.argv[1]:
+    p = Playlist(sys.argv[1])
+else:
+    p = Playlist(input("Input Youtube Playlist: "))
 
 def downloader(url):
     try:
