@@ -1,0 +1,154 @@
+Кастомный репозиторий Debian (AstraLinux)
+
+1. Подготовка структуры каталогов
+
+В каталоге DISTS размещаются каталоги версии релизов операционных систем (названия дистрибутивов - buster) либо наименования классов (stable), например:
+(https://www.debian.org/releases/index.ru.html или https://wiki.debian.org/ru/DebianReleases)
+- STABLE (buster - debian 10, smolensk - astra linux se) для smolenska класс stable, хотя основная база взята от debian 9
+- UNSTABLE (sid)
+- TESTING (bullseye - debian next) 
+- OLDSTABLE (stretch - debian 9) базовая система для Astra Linux SE 1.6 Smolensk
+- OLDOLDSTABLE (jessie - debian 8)
+
+Для каждого дистрибутива формируется своя система подкаталогов, открытое ПО (MAIN), открытое ПО, но зависимое от проприетарного ПО (contrib), прориетарное ПО (non-free).
+Подкаталогах хранятся пакеты и исходные коды:
+
+- binary-arm
+- binary-amd64
+- binary-i386
+- binary-...
+- source
+
+Каталог i18n поддержки национальных языков.
+
+Структура каталогов с индексными файлами. (О размещении каталогов можно ознакомиться на оф. сайте Debian.)
+
+dists
+└── stable (or smolensk)
+    ├── contrib
+    │   ├── binary-amd64
+    │   └── i18n
+    ├── main
+    │   ├── binary-amd64
+    │   │   ├── binary-amd64
+    │   │   └── i18n
+    │   └── i18n
+    └── non-free
+        ├── binary-amd64
+        └── i18n
+
+Стурктура каталогов с пакетами
+
+pool
+├── contrib
+├── main
+└── non-free
+
+# Создаем каталоги
+mkdir -p dists/main/binary-amd64
+mkdir -p dists/main/i18n
+mkdir -p dists/contrib/binary-amd64
+mkdir -p dists/contrib/i18n
+mkdir -p dists/non-free/binary-amd64
+mkdir -p dists/non-free/i18n
+
+mkdir -p  pool/main
+mkdir -p  pool/contrib
+mkdir -p  pool/non-free
+
+2. Подготовка индексных файлов Packages
+
+Размещаем необходимые дистрибутивы и библиотеки, например deadbeef (deadbeef-static_1.8.7-1_amd64.deb), копируем в "contrib" в заранее подготовленные каталоги "d" и "deadbeef".
+
+example: pool/contrib/d/deadbeef/deadbeef-static_1.8.7-1_amd64.deb
+
+Формируем индексные файлы по веткам компонентов "main" "contrib" "non-free" (Packages) и сохраняем в соответствующие диреткориях
+
+# Формируем индексы
+dpkg-scanpackages pool/contrib /dev/null > dists/stable/contrib/binary-amd64/Packages
+dpkg-scanpackages pool/main /dev/null > dists/stable/main/binary-amd64/Packages
+dpkg-scanpackages pool/non-free /dev/null > dists/stable/non-free/binary-amd64/Packages
+
+# Формируем архивные версии индексов
+gzip -9c <dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages.gz
+gzip -9c <dists/stable/contrib/binary-amd64/Packages > dists/stable/contrib/binary-amd64/Packages.gz
+gzip -9c <dists/stable/non-free/binary-amd64/Packages > dists/stable/non-free/binary-amd64/Packages.gz
+bzip2 -9c <dists/stable/main/binary-amd64/Packages > dists/stable/main/binary-amd64/Packages.bz2
+bzip2 -9c <dists/stable/contrib/binary-amd64/Packages > dists/stable/contrib/binary-amd64/Packages.bz2
+bzip2 -9c <dists/stable/non-free/binary-amd64/Packages > dists/stable/non-free/binary-amd64/Packages.bz2
+
+Создаем файлы описания релизов (Release)
+
+# main
+cat <<EOL > dists/stable/main/binary-amd64/Release
+Origin: Debian
+Suite: stable
+Codename: smolensk
+Version: 1.6
+Component: main
+Architecture: amd64
+EOL
+
+# contrib
+cat <<EOL > dists/stable/contrib/binary-amd64/Release
+Origin: Debian
+Suite: stable
+Codename: smolensk
+Version: 1.6
+Component: contrib
+Architecture: amd64
+EOL
+
+# non-free
+cat <<EOL > dists/stable/non-free/binary-amd64/Release
+Origin: Debian
+Suite: stable
+Codename: smolensk
+Version: 1.6
+Component: non-free
+Architecture: amd64
+EOL
+
+# stable (тут указывает каталоги всех компонентов)
+cat <<EOL > dists/stable/Release
+Origin: Debian
+Suite: stable
+Codename: smolensk
+Version: 1.6
+Component: main contrib non-free
+Architecture: amd64
+EOL
+
+3. Подготовка описаний Release с новыми пакетами
+
+Генерируем хэши индексов и заносим в обновленный релиз (Release).Создание файла Release необходимо выполнять из рабочего каталога дистрибутива (класса) каталоге stable - пути должны быть относительно каталога
+
+cd dists/stable/
+
+apt-ftparchive release . >> Release
+
+4. Подписание индексов и релизов, генерация InRelease
+
+Если ключи для подписания нет, то создаем его
+
+gpg --gen-key
+
+Отрытый ключ оставляем для установки пользователям, размещаем где нибудь на сервере
+
+wget -qO - http://server/hot.repo.key | sudo apt-key add -
+
+Подписываем файл Release
+gpg -abs -o dists/smolensk/Release.gpg dists/smolensk/Release
+
+
+Формируем файл InRelease
+gpg --default-key 2021-02-28 --clearsign -o dists/stable/InRelease dists/stable/Release
+
+Источники:
+
+https://wiki.debian.org/ru/SourcesList
+https://www.debian.org/doc/manuals/repository-howto/repository-howto.en.html
+https://liberatum.ru/blog/repozitorii-dlya-debianubuntu
+https://medium.com/sqooba/create-your-own-custom-and-authenticated-apt-repository-1e4a4cf0b864
+https://habr.com/ru/post/358182/
+https://eax.me/gpg/
