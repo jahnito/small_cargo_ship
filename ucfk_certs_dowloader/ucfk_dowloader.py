@@ -27,7 +27,7 @@ def downloader(url='http://crl.roskazna.ru/crl/', infofile='ucfk_downloader_info
                 files.append(match.groups())
     for i in files:
         if 'http' in i[0]:
-            print(f'Скачиваю файл {i[0]}')
+            # print(f'Скачиваю файл {i[0]}')
             try:
                 urllib.request.urlretrieve(i[0], transliterate(i[0].split('/')[-1]))
                 with open(infofile, 'a') as f:
@@ -36,7 +36,7 @@ def downloader(url='http://crl.roskazna.ru/crl/', infofile='ucfk_downloader_info
             except (urllib.error.ContentTooShortError) as err:
                 print(f'Не удалось скачать файл {i[0]}')
         else:
-            print(f'Скачиваю файл {i[0]}')
+            # print(f'Скачиваю файл {i[0]}')
             try:
                 urllib.request.urlretrieve(url + quote(i[0]), transliterate(i[0]))
                 with open(infofile, 'a') as f:
@@ -80,15 +80,20 @@ def md5file(filename) -> str:
     return md5.hexdigest()
 
 
-def packing_to_arch(files: list, arch_name='latest'):
+def packing_to_arch(files: list, arch_name='latest', tmp_name='tmp'):
     ff = ' '.join(files)
-    proc = subprocess.run('tar -cjf {}.tbz {}'.format(arch_name, ff), shell=True)
+    proc = subprocess.run('tar -cjf {}.tbz {}'.format(tmp_name, ff), shell=True)
     for f_i  in files:
         os.remove(f_i)
     if proc.returncode == 0:
         print('Сертификаты упакованы в архив')
+        os.rename(f'{tmp_name}.tbz', f'{arch_name}.tbz')
     else:
         print('Чтото пошло не так...')
+        try:
+            os.remove(f'{tmp_name}.tbz')
+        except:
+            print('Файл архива не был создан')
 
 
 ucfk_url = 'http://crl.roskazna.ru/crl/'
