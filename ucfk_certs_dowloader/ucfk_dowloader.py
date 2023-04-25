@@ -10,6 +10,7 @@ from urllib.parse import quote
 from pprint import pprint
 import hashlib
 import subprocess
+import os
 
 
 def downloader(url='http://crl.roskazna.ru/crl/', infofile='ucfk_downloader_info.txt'):
@@ -79,9 +80,11 @@ def md5file(filename) -> str:
     return md5.hexdigest()
 
 
-def packing_to_arch(files: list, arch_name='arch'):
+def packing_to_arch(files: list, arch_name='latest'):
     ff = ' '.join(files)
     proc = subprocess.run('tar -cjf {}.tbz {}'.format(arch_name, ff), shell=True)
+    for f_i  in files:
+        os.remove(f_i)
     if proc.returncode == 0:
         print('Сертификаты упакованы в архив')
     else:
@@ -89,7 +92,8 @@ def packing_to_arch(files: list, arch_name='arch'):
 
 
 ucfk_url = 'http://crl.roskazna.ru/crl/'
+work_dir = '/home/jahn'
 
-
-if __name__ == "__main__":    
+if __name__ == "__main__":
+    os.chdir(work_dir)
     packing_to_arch(downloader())
